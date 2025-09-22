@@ -1,0 +1,38 @@
+# SmartSpider 配置文件
+
+app:
+  name: SmartSpider
+  version: 0.1.0
+
+# 爬虫设置
+crawler:
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+  delay: 1 # 请求之间的延迟（秒）
+  concurrent_requests: 5
+  timeout: 30 # 请求超时时间（秒）
+  retry_count: 3 # 失败请求的重试次数
+
+# 数据存储设置
+storage:
+  type: "file" # 可以是 "file", "database" 等
+  path: "data/output" # 文件存储路径
+  format: "json" # 文件存储格式
+
+# 日志设置
+logging:
+  level: "INFO"
+  file: "smart_spider.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# 爬虫规则
+rules:
+  # 提取数据的示例规则
+  example_rule:
+    start_urls:
+      - "https://example.com"
+    allowed_domains:
+      - "example.com"
+    extract:
+      title: "h1"
+      content: ".content"
+      links: "a::attr(href)"
