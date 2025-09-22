@@ -28,6 +28,11 @@ class Settings:
         
         # 用环境变量覆盖设置
         self._override_with_env_vars()
+        
+        # 设置延迟初始化标志，默认为False
+        # 在测试环境中，应在配置文件或环境变量中设置为True
+        if 'delay_init' not in self._settings:
+            self._settings['delay_init'] = False
     
     def _load_config_file(self):
         """从config.yaml文件加载设置"""

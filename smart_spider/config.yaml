@@ -1,0 +1,216 @@
+# SmartSpider 配置文件
+
+# 应用基本设置
+app:
+  version: "0.1.0"
+  name: "SmartSpider"
+  description: "智能网络爬虫系统"
+  debug: true
+
+# 爬虫设置
+crawler:
+  # 默认爬取配置
+  default_config:
+    concurrency: 5
+    timeout: 30
+    retry_count: 3
+    retry_delay: 2
+    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36"
+    follow_redirects: true
+    max_redirects: 5
+    use_proxy: false
+    use_cookies: true
+    crawl_delay: 1.0  # 爬取延迟(秒)
+  
+  # 缓存设置
+  cache:
+    enabled: true
+    ttl: 3600  # 缓存过期时间(秒)
+    backend: "memory"  # memory 或 file
+    file_path: "./cache/crawler"
+  
+  # 爬虫状态更新间隔(秒)
+  status_update_interval: 5
+  
+  # 爬取结果存储设置
+  storage:
+    enabled: true
+    type: "file"  # file 或 database
+    file_format: "jsonl"  # jsonl, json, csv, pickle
+    file_path: "./data/crawled"
+    rotation: "daily"  # none, daily, weekly, monthly
+
+# 代理设置
+proxy:
+  # 默认代理池配置
+  default_pool:
+    name: "default_public_proxies"
+    type: "public"
+    description: "默认公共代理池"
+    
+  # 代理健康检查配置
+  health_check:
+    enabled: true
+    interval: 300  # 检查间隔(秒)
+    timeout: 5  # 超时时间(秒)
+    test_url: "https://www.example.com"
+    success_threshold: 0.8  # 成功阈值
+    
+  # 代理租用设置
+  lease:
+    default_ttl: 300  # 默认租用时长(秒)
+    max_ttl: 3600  # 最大租用时长(秒)
+
+# Cookie 设置
+cookie:
+  # 默认Cookie池配置
+  default_pool:
+    name: "default_cookies"
+    type: "session"
+    description: "默认Cookie池"
+    
+  # Cookie健康检查配置
+  health_check:
+    enabled: true
+    interval: 600  # 检查间隔(秒)
+    test_url: "https://www.example.com"
+    
+  # Cookie租用设置
+  lease:
+    default_ttl: 1800  # 默认租用时长(秒)
+    max_ttl: 7200  # 最大租用时长(秒)
+
+# 任务管理设置
+task:
+  # 任务队列设置
+  queue:
+    enabled: true
+    max_retries: 3
+    retry_delay: 60
+    
+  # 任务存储设置
+  storage:
+    enabled: true
+    backend: "file"  # file 或 database
+    file_path: "./data/tasks"
+    
+  # 任务监控设置
+  monitoring:
+    enabled: true
+    stats_update_interval: 10  # 统计更新间隔(秒)
+
+# 存储设置
+storage:
+  # 文件存储设置
+  file:
+    base_path: "./data"
+    max_file_size: 104857600  # 100MB
+    backup_enabled: true
+    backup_interval: 86400  # 24小时
+  
+  # 数据库设置(预留)
+  database:
+    enabled: false
+    type: "sqlite"  # sqlite, mysql, postgresql
+    connection_string: "sqlite:///./data/smart_spider.db"
+
+# 日志设置
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  datefmt: "%Y-%m-%d %H:%M:%S"
+  
+  # 控制台日志设置
+  console:
+    enabled: true
+    level: "INFO"
+  
+  # 文件日志设置
+  file:
+    enabled: true
+    level: "INFO"
+    path: "./logs/smart_spider.log"
+    max_size: 10485760  # 10MB
+    backup_count: 5
+    rotation: "midnight"
+  
+  # 错误日志设置
+  error_file:
+    enabled: true
+    path: "./logs/error.log"
+    max_size: 5242880  # 5MB
+    backup_count: 3
+
+# API 设置
+api:
+  host: "0.0.0.0"
+  port: 8000
+  reload: true  # 开发模式下启用自动重载
+  debug: true
+  workers: 1
+  
+  # CORS 设置
+  cors:
+    enabled: true
+    allow_origins: ["*"]
+    allow_credentials: true
+    allow_methods: ["*"]
+    allow_headers: ["*"]
+  
+  # 安全设置
+  security:
+    enabled: false
+    api_key_required: false
+    rate_limiting: false
+    rate_limit: "100/minute"
+
+# 网络设置
+network:
+  timeout: 30
+  connect_timeout: 10
+  read_timeout: 20
+  write_timeout: 20
+  
+  # DNS缓存设置
+  dns_cache:
+    enabled: true
+    ttl: 300
+
+# 性能设置
+performance:
+  # 线程池设置
+  thread_pool:
+    enabled: true
+    max_workers: 10
+  
+  # 连接池设置
+  connection_pool:
+    enabled: true
+    max_connections: 100
+    keep_alive: 300
+
+# 开发设置
+development:
+  # 调试模式设置
+  debug_mode:
+    enabled: true
+    detailed_errors: true
+    traceback_enabled: true
+  
+  # 测试设置
+  testing:
+    enabled: false
+    test_data_path: "./tests/data"
+
+# 插件系统设置(预留)
+plugins:
+  enabled: false
+  directory: "./plugins"
+  loaded_plugins: []
+
+# 国际化设置(预留)
+i18n:
+  enabled: false
+  default_language: "zh_CN"
+  supported_languages: ["zh_CN", "en_US"]
+  translations_directory: "./translations"

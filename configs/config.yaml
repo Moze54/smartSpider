@@ -1,5 +1,8 @@
 # SmartSpider 配置文件
 
+# 延迟初始化模式，在测试环境中应设为true
+delay_init: true
+
 app:
   name: SmartSpider
   version: 0.1.0
