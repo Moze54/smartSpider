@@ -1246,27 +1246,17 @@ class ProxyManager:
             }
     
     async def _auto_refresh_proxies(self):
-        """自动刷新代理池（从外部源获取新代理）"""
+        """自动刷新代理池（从外部源获取新代理）
+        注意：当前版本仅为占位实现，未连接实际代理源
+        """
         self.logger.info("启动自动刷新代理任务")
         
-        # 这是一个示例实现，实际使用时需要根据具体的代理源进行调整
-        # 在实际应用中，可以从公开的代理API、爬虫等获取新的代理
-        
-        # 目前只是一个占位实现，实际应用中需要替换为真实的代理源获取逻辑
         while True:
             try:
                 # 每小时尝试刷新一次代理
                 await asyncio.sleep(3600)
                 
-                self.logger.info("执行自动刷新代理任务")
-                
-                # 这里应该是从代理源获取新代理的代码
-                # 例如：
-                # new_proxies = await self._fetch_proxies_from_source()
-                # if new_proxies:
-                #     for pool_id in self.proxy_pools:
-                #         if self.proxy_pools[pool_id].type == ProxyPoolType.PUBLIC:
-                #             await self.batch_add_proxies(pool_id, new_proxies)
+                self.logger.debug("执行自动刷新代理任务 - 当前版本未实现实际功能")
                 
             except Exception as e:
                 self.logger.error(f"自动刷新代理任务异常: {str(e)}")

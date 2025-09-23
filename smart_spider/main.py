@@ -10,13 +10,16 @@ from smart_spider.settings import settings
 def main():
     """运行 SmartSpider 的主函数"""
     try:
-        print(f"Starting SmartSpider v{__import__(__name__).__version__}")
+        # 获取版本号（从配置中或硬编码）
+        version = settings.get('app', {}).get('version', '0.1.0')
+        print(f"Starting SmartSpider v{version}")
         
         # 使用设置初始化爬虫
         crawler = SmartCrawler(settings)
         
-        # 开始爬取
-        crawler.start()
+        # 开始爬取（异步运行）
+        import asyncio
+        asyncio.run(crawler.start())
         
     except KeyboardInterrupt:
         print("\n用户停止了 SmartSpider。")

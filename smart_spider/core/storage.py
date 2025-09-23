@@ -77,34 +77,35 @@ class FileSystemStorage(StorageBackend):
         Returns:
             bool: 是否保存成功
         """
-        filename = kwargs.get('filename', self._get_default_filename())
-        filepath = os.path.join(self.path, filename)
-        overwrite = kwargs.get('overwrite', False)
-        append = kwargs.get('append', True) if self.format == 'jsonl' else False
+        filename: str = kwargs.get('filename', self._get_default_filename())
+        filepath: str = os.path.join(self.path, filename)
+        overwrite: bool = kwargs.get('overwrite', False)
+        append: bool = kwargs.get('append', True) if self.format == 'jsonl' else False
         
         try:
-            # 确保数据是列表格式
+            # 确保数据是列表格式并验证每个数据项
             if not isinstance(data, list):
                 data = [data]
             
-            # 验证每个数据项是否为字典
             for item in data:
                 if not isinstance(item, dict):
                     raise ValueError(f"数据必须是字典格式，当前类型: {type(item)}")
             
-            mode = 'w' if overwrite else ('a' if append else 'w')
+            # 确定写入模式
+            mode: str = 'w' if overwrite else ('a' if append else 'w')
             
-            if self.format == 'jsonl':
-                await self._save_jsonl(filepath, data, mode)
-            elif self.format == 'json':
-                await self._save_json(filepath, data, mode, overwrite)
-            elif self.format == 'csv':
-                await self._save_csv(filepath, data, mode, overwrite)
-            elif self.format == 'pickle':
-                await self._save_pickle(filepath, data, mode, overwrite)
-            else:
+            # 根据文件格式调用对应的保存方法
+            save_methods = {
+                'jsonl': self._save_jsonl,
+                'json': self._save_json,
+                'csv': self._save_csv,
+                'pickle': self._save_pickle
+            }
+            
+            if self.format not in save_methods:
                 raise ValueError(f"不支持的存储格式: {self.format}")
             
+            await save_methods[self.format](filepath, data, mode, overwrite)
             self.logger.debug(f"成功保存数据到文件: {filepath}")
             return True
         except Exception as e:
@@ -313,7 +314,7 @@ class FileSystemStorage(StorageBackend):
         try:
             if not os.path.exists(filepath):
                 self.logger.warning(f"文件不存在: {filepath}")
-                return True  # 认为删除成功
+                return False  # 文件不存在视为删除失败
             
             # 如果指定了item_id，只删除特定项
             if item_id:
@@ -326,7 +327,7 @@ class FileSystemStorage(StorageBackend):
                         return True
                     else:
                         self.logger.warning(f"未找到ID为 {item_id} 的项目")
-                        return True
+                        return False  # 未找到指定项目视为删除失败
             
             # 否则删除整个文件
             os.remove(filepath)

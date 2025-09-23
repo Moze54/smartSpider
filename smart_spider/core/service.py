@@ -109,8 +109,7 @@ class CrawlerService:
         return processed_data
     
     def save_crawled_data(self, data):
-        """保存抓取的数据"""
-        """
+        """保存抓取的数据
         将抓取的数据保存到存储中
         
         参数:
@@ -120,11 +119,12 @@ class CrawlerService:
             bool: 成功状态
         """
         try:
-            # 根据存储类型选择不同的保存方法
+            # 统一使用文件存储，根据格式选择不同的保存方法
             if self.storage_type == 'file':
-                return self._save_to_file(data)
-            elif self.storage_type == 'jsonl':
-                return self._save_to_jsonl(data)
+                if self.storage_format == 'jsonl':
+                    return self._save_to_jsonl(data)
+                else:
+                    return self._save_to_file(data)
             else:
                 self.logger.error(f"不支持的存储类型: {self.storage_type}")
                 return False

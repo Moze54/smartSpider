@@ -7,6 +7,7 @@ import httpx
 from bs4 import BeautifulSoup
 from smart_spider.utils.logger import get_logger
 from smart_spider.core.service import CrawlerService
+import urllib.parse
 
 
 class SmartCrawler:
@@ -263,7 +264,6 @@ class SmartCrawler:
                     next_link = self._extract_value(soup, selector)
                     if next_link:
                         # 确保URL是绝对路径
-                        import urllib.parse
                         absolute_url = urllib.parse.urljoin(url, next_link)
                         links.append(absolute_url)
             else:
@@ -271,7 +271,6 @@ class SmartCrawler:
                 for a_tag in soup.find_all('a', href=True):
                     href = a_tag['href']
                     # 确保URL是绝对路径
-                    import urllib.parse
                     absolute_url = urllib.parse.urljoin(url, href)
                     links.append(absolute_url)
             
@@ -289,8 +288,7 @@ class SmartCrawler:
             if allowed_domains:
                 filtered_links = []
                 for link in links:
-                    from urllib.parse import urlparse
-                    parsed_url = urlparse(link)
+                    parsed_url = urllib.parse.urlparse(link)
                     if parsed_url.netloc in allowed_domains:
                         filtered_links.append(link)
                 links = filtered_links

@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, validator
 import asyncio
 
 from smart_spider.core.proxy_manager import (
-    proxy_manager,
+    ProxyManager,
     ProxyStatus,
     ProxyType,
     ProxyPoolType,
@@ -20,6 +20,7 @@ from smart_spider.utils.logger import get_logger
 from smart_spider.settings import settings
 
 router = APIRouter(prefix="/proxies", tags=["代理管理"])
+proxy_manager = ProxyManager()
 logger = get_logger(__name__)
 
 

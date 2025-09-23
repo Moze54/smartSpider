@@ -389,9 +389,6 @@ class TaskManager:
                 if task.is_active():
                     await self.stop_task(task_id)
                 
-                # 删除任务数据
-                await self.storage.delete(filename=f'{task_id}_results.jsonl')
-                
                 # 从内存中删除任务
                 del self.tasks[task_id]
                 
@@ -400,6 +397,9 @@ class TaskManager:
                 
                 # 保存任务状态
                 await self._save_tasks_to_storage()
+                
+                # 删除任务数据（移到最后，确保即使文件删除失败也能成功删除内存中的任务）
+                await self.storage.delete(filename=f'{task_id}_results.jsonl')
                 
                 self.logger.info(f"删除任务成功: {task_id} - {task.config.name}")
                 return True

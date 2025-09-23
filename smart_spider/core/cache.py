@@ -209,13 +209,18 @@ class MemoryCacheBackend(CacheBackend):
             int: 清理的缓存项数量
         """
         now = datetime.now()
-        expired_keys = [
-            key for key, item in self._cache.items()
-            if item['expire_at'] and now > item['expire_at']
-        ]
+        expired_keys = []
         
+        # 预先收集所有过期键，避免在迭代过程中修改字典
+        for key, item in list(self._cache.items()):
+            if item['expire_at'] and now > item['expire_at']:
+                expired_keys.append(key)
+        
+        # 一次性删除所有过期键（使用直接删除而不是调用delete方法以提高性能）
         for key in expired_keys:
-            await self.delete(key)
+            if key in self._cache:  # 再次检查，以防在收集过程中被其他操作删除
+                del self._cache[key]
+                self.logger.debug(f"删除过期缓存: {key}")
         
         if expired_keys:
             self.logger.debug(f"清理了 {len(expired_keys)} 个过期缓存项")
@@ -414,11 +419,24 @@ class FileCacheBackend(CacheBackend):
             for filename in os.listdir(self.path):
                 # 文件名格式: cache_{hash}.{ext}
                 if filename.startswith('cache_'):
-                    # 提取原始键（这是一个简化的实现，实际上我们可能需要更复杂的映射）
-                    # 在实际使用中，我们可能需要维护一个键到文件名的映射
-                    key = filename[6:-4]  # 假设扩展名是.pkl或.json
-                    if await self.has(key):
-                        keys.append(key)
+                    # 注意：由于我们使用哈希值作为文件名，无法直接还原原始键
+                    # 这里我们返回哈希值作为键的标识
+                    # 实际应用中，可能需要维护一个键到哈希值的映射表
+                    key_hash = filename[6:].split('.')[0]  # 获取哈希部分（去掉扩展名）
+                    # 由于我们无法获取原始键，我们使用哈希值作为标识
+                    # 但我们仍然需要检查文件是否过期
+                    filepath = os.path.join(self.path, filename)
+                    try:
+                        # 快速检查文件是否过期
+                        if self.serializer == 'json':
+                            async with aiofiles.open(filepath, 'r', encoding='utf-8') as f:
+                                content = await f.readline()  # 只读取第一行检查格式
+                                if content and content.startswith('{'):
+                                    keys.append(f"hash_{key_hash}")
+                        else:  # pickle格式无法快速检查，直接添加
+                            keys.append(f"hash_{key_hash}")
+                    except:
+                        pass
             return keys
         except Exception as e:
             self.logger.error(f"获取文件缓存键失败: {str(e)}")
@@ -432,11 +450,26 @@ class FileCacheBackend(CacheBackend):
         try:
             count = 0
             for filename in os.listdir(self.path):
-                filepath = os.path.join(self.path, filename)
-                if os.path.isfile(filepath):
-                    key = filename[6:-4]  # 简化的键提取
-                    if await self.has(key):
-                        count += 1
+                if filename.startswith('cache_') and filename.endswith(('.json', '.pkl')):
+                    filepath = os.path.join(self.path, filename)
+                    if os.path.isfile(filepath):
+                        # 获取哈希值作为临时键
+                        key_hash = filename[6:].split('.')[0]
+                        # 使用临时键检查文件是否过期
+                        # 注意：由于我们无法获取原始键，这里只是一个近似检查
+                        try:
+                            if self.serializer == 'json':
+                                async with aiofiles.open(filepath, 'r', encoding='utf-8') as f:
+                                    content = await f.read()
+                                    cache_item = json.loads(content)
+                                    expire_at = cache_item.get('expire_at')
+                                    if not expire_at or datetime.now() <= datetime.fromisoformat(expire_at):
+                                        count += 1
+                            else:  # pickle格式我们无法快速检查，直接计数
+                                count += 1
+                        except:
+                            # 如果读取失败，可能是损坏的文件，不计入
+                            pass
             return count
         except Exception as e:
             self.logger.error(f"获取文件缓存大小失败: {str(e)}")
@@ -595,15 +628,30 @@ def cached(ttl: Optional[int] = None, key_func: Optional[Callable] = None,
                 cache = get_cache(cache_name, cache_config)
                 
                 # 尝试从缓存获取（同步方式）
+                result = None
                 try:
-                    loop = asyncio.get_event_loop()
-                    result = loop.run_until_complete(cache.get(key))
-                except RuntimeError:
-                    # 如果没有运行中的事件循环，创建一个新的
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    result = loop.run_until_complete(cache.get(key))
-                    loop.close()
+                    # 首先尝试获取当前运行的事件循环
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            # 如果事件循环正在运行，使用run_coroutine_threadsafe
+                            future = asyncio.run_coroutine_threadsafe(cache.get(key), loop)
+                            result = future.result()
+                        else:
+                            # 如果事件循环存在但未运行，直接运行
+                            result = loop.run_until_complete(cache.get(key))
+                    except RuntimeError:
+                        # 如果没有运行中的事件循环，创建一个新的
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        try:
+                            result = loop.run_until_complete(cache.get(key))
+                        finally:
+                            loop.close()
+                            asyncio.set_event_loop(None)  # 清除当前线程的事件循环引用
+                except Exception as e:
+                    # 如果获取缓存失败，记录错误但继续执行函数
+                    pass
                 
                 if result is not None:
                     return result
@@ -613,14 +661,28 @@ def cached(ttl: Optional[int] = None, key_func: Optional[Callable] = None,
                 
                 # 存入缓存（同步方式）
                 try:
-                    loop = asyncio.get_event_loop()
-                    loop.run_until_complete(cache.set(key, result, ttl))
-                except RuntimeError:
-                    # 如果没有运行中的事件循环，创建一个新的
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    loop.run_until_complete(cache.set(key, result, ttl))
-                    loop.close()
+                    # 首先尝试获取当前运行的事件循环
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            # 如果事件循环正在运行，使用run_coroutine_threadsafe
+                            future = asyncio.run_coroutine_threadsafe(cache.set(key, result, ttl), loop)
+                            future.result()  # 等待完成并传播异常
+                        else:
+                            # 如果事件循环存在但未运行，直接运行
+                            loop.run_until_complete(cache.set(key, result, ttl))
+                    except RuntimeError:
+                        # 如果没有运行中的事件循环，创建一个新的
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        try:
+                            loop.run_until_complete(cache.set(key, result, ttl))
+                        finally:
+                            loop.close()
+                            asyncio.set_event_loop(None)  # 清除当前线程的事件循环引用
+                except Exception as e:
+                    # 如果设置缓存失败，记录错误但仍然返回函数结果
+                    pass
                 
                 return result
             return sync_wrapper
